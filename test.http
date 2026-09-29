@@ -27,3 +27,26 @@ Tom,20
 Jack,21
 
 --preview-boundary--
+
+### 保存数据集（需要使用 mysql Profile 启动）
+
+POST http://localhost:8080/api/datasets
+Content-Type: multipart/form-data; boundary=dataset-boundary
+
+--dataset-boundary
+Content-Disposition: form-data; name="file"; filename="student.csv"
+Content-Type: text/csv
+
+name,age
+Tom,20
+Jack,21
+
+--dataset-boundary--
+
+### 查询已保存的数据集
+
+GET http://localhost:8080/api/datasets/1
+
+### 预览已保存的数据集
+
+GET http://localhost:8080/api/datasets/1/preview?limit=10

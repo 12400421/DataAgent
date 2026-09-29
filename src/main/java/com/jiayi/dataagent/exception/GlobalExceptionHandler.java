@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DatasetException.class)
     public ResponseEntity<Map<String, Object>> handleDatasetException(
             DatasetException exception, HttpServletRequest request) {
-        return errorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request.getRequestURI());
+        return errorResponse(exception.getStatus(), exception.getMessage(), request.getRequestURI());
     }
 
     @ExceptionHandler({

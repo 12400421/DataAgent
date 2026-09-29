@@ -20,13 +20,8 @@ public class DatasetService {
     private static final int MAX_PREVIEW_ROWS = 100;
 
     public Map<String, Object> analyzeCsv(MultipartFile file) {
-        validateCsvFile(file);
-        try {
-            CsvSummary csvSummary = CsvUtils.readSummary(file.getInputStream());
-            return createMetadata(file, csvSummary.rows(), csvSummary.columnNames());
-        } catch (IOException | IllegalArgumentException exception) {
-            throw new DatasetException(messageOf(exception), exception);
-        }
+        CsvSummary csvSummary = summarizeCsv(file);
+        return createMetadata(file, csvSummary.rows(), csvSummary.columnNames());
     }
 
     public Map<String, Object> previewCsv(MultipartFile file, int limit) {
@@ -40,6 +35,15 @@ public class DatasetService {
             Map<String, Object> result = createMetadata(file, csvData.rows(), csvData.columnNames());
             result.put("preview", csvData.preview());
             return result;
+        } catch (IOException | IllegalArgumentException exception) {
+            throw new DatasetException(messageOf(exception), exception);
+        }
+    }
+
+    CsvSummary summarizeCsv(MultipartFile file) {
+        validateCsvFile(file);
+        try {
+            return CsvUtils.readSummary(file.getInputStream());
         } catch (IOException | IllegalArgumentException exception) {
             throw new DatasetException(messageOf(exception), exception);
         }
