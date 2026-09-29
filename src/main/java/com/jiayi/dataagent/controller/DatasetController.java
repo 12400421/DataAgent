@@ -2,7 +2,6 @@ package com.jiayi.dataagent.controller;
 
 import com.jiayi.dataagent.service.DatasetService;
 
-import java.io.IOException;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,7 +21,14 @@ public class DatasetController {
     }
 
     @PostMapping("/upload")
-    public Map<String, Object> upload(@RequestParam("file") MultipartFile file) throws IOException {
+    public Map<String, Object> upload(@RequestParam("file") MultipartFile file) {
         return datasetService.analyzeCsv(file);
+    }
+
+    @PostMapping("/preview")
+    public Map<String, Object> preview(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "10") int limit) {
+        return datasetService.previewCsv(file, limit);
     }
 }

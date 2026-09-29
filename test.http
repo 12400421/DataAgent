@@ -12,3 +12,18 @@ Tom,20
 Jack,21
 
 --boundary--
+
+### CSV 数据预览（默认返回前 10 行）
+
+POST http://localhost:8080/api/dataset/preview?limit=10
+Content-Type: multipart/form-data; boundary=preview-boundary
+
+--preview-boundary
+Content-Disposition: form-data; name="file"; filename="student.csv"
+Content-Type: text/csv
+
+name,age
+Tom,20
+Jack,21
+
+--preview-boundary--
