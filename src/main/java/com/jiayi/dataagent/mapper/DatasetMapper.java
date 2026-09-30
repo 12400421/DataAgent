@@ -5,6 +5,7 @@ import com.jiayi.dataagent.model.DatasetMetadata;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
@@ -43,10 +44,24 @@ public interface DatasetMapper {
     DatasetMetadata findById(long id);
 
     @Select("""
+            SELECT id, original_filename, stored_filename, file_path, file_size,
+                   row_count, column_count, status, created_at, updated_at
+            FROM datasets
+            ORDER BY created_at DESC, id DESC
+            """)
+    List<DatasetMetadata> findAll();
+
+    @Select("""
             SELECT column_name
             FROM dataset_columns
             WHERE dataset_id = #{datasetId}
             ORDER BY column_position
             """)
     List<String> findColumnNames(long datasetId);
+
+    @Delete("DELETE FROM dataset_columns WHERE dataset_id = #{datasetId}")
+    int deleteColumns(long datasetId);
+
+    @Delete("DELETE FROM datasets WHERE id = #{id}")
+    int deleteById(long id);
 }

@@ -59,6 +59,24 @@ public class DatasetFileStorage {
         }
     }
 
+    public void deleteRequired(String filePath) {
+        Path path = resolveStoredPath(filePath);
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException exception) {
+            throw new DatasetException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete dataset file", exception);
+        }
+    }
+
+    private Path resolveStoredPath(String filePath) {
+        Path path = Path.of(filePath).toAbsolutePath().normalize();
+        if (!path.startsWith(storageRoot)) {
+            throw new DatasetException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid dataset file path");
+        }
+        return path;
+    }
+
     public record StoredFile(String storedFilename, String filePath) {
     }
 }

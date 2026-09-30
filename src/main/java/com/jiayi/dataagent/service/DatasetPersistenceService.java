@@ -7,6 +7,10 @@ import com.jiayi.dataagent.service.DatasetFileStorage.StoredFile;
 import com.jiayi.dataagent.utils.CsvUtils;
 import com.jiayi.dataagent.utils.CsvUtils.CsvData;
 import com.jiayi.dataagent.utils.CsvUtils.CsvSummary;
+import com.jiayi.dataagent.utils.CsvQualityAnalyzer;
+import com.jiayi.dataagent.utils.CsvQualityAnalyzer.DatasetQuality;
+import com.jiayi.dataagent.utils.CsvProfileAnalyzer;
+import com.jiayi.dataagent.utils.CsvProfileAnalyzer.DatasetProfile;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -71,6 +75,12 @@ public class DatasetPersistenceService {
         return toResponse(dataset);
     }
 
+    public List<Map<String, Object>> findAll() {
+        return datasetMapper.findAll().stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public Map<String, Object> preview(long id, int limit) {
         if (limit < 1 || limit > MAX_PREVIEW_ROWS) {
             throw new DatasetException("Preview limit must be between 1 and " + MAX_PREVIEW_ROWS);
@@ -87,6 +97,50 @@ public class DatasetPersistenceService {
             throw new DatasetException(
                     HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read stored dataset", exception);
         }
+    }
+
+    public Map<String, Object> quality(long id) {
+        DatasetMetadata dataset = requireDataset(id);
+        try (InputStream inputStream = fileStorage.open(dataset.getFilePath())) {
+            DatasetQuality quality = CsvQualityAnalyzer.analyze(inputStream);
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("id", dataset.getId());
+            response.put("filename", dataset.getOriginalFilename());
+            response.put("rows", quality.rows());
+            response.put("duplicateRowCount", quality.duplicateRowCount());
+            response.put("columnQualities", quality.columns());
+            return response;
+        } catch (IOException | IllegalArgumentException exception) {
+            throw new DatasetException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Failed to analyze stored dataset", exception);
+        }
+    }
+
+    public Map<String, Object> profile(long id) {
+        DatasetMetadata dataset = requireDataset(id);
+        try (InputStream inputStream = fileStorage.open(dataset.getFilePath())) {
+            DatasetProfile profile = CsvProfileAnalyzer.analyze(inputStream);
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("id", dataset.getId());
+            response.put("filename", dataset.getOriginalFilename());
+            response.put("rows", profile.rows());
+            response.put("columnProfiles", profile.columns());
+            return response;
+        } catch (IOException | IllegalArgumentException exception) {
+            throw new DatasetException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Failed to profile stored dataset", exception);
+        }
+    }
+
+    @Transactional
+    public void delete(long id) {
+        DatasetMetadata dataset = requireDataset(id);
+        datasetMapper.deleteColumns(id);
+        int deletedDatasets = datasetMapper.deleteById(id);
+        if (deletedDatasets != 1) {
+            throw new DatasetException(HttpStatus.NOT_FOUND, "Dataset not found: " + id);
+        }
+        fileStorage.deleteRequired(dataset.getFilePath());
     }
 
     private DatasetMetadata requireDataset(long id) {

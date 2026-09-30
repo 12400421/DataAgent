@@ -1,6 +1,6 @@
 ### 测试文件上传
 
-POST http://localhost:8080/api/dataset/upload
+POST http://localhost:8081/api/dataset/upload
 Content-Type: multipart/form-data; boundary=boundary
 
 --boundary
@@ -15,7 +15,7 @@ Jack,21
 
 ### CSV 数据预览（默认返回前 10 行）
 
-POST http://localhost:8080/api/dataset/preview?limit=10
+POST http://localhost:8081/api/dataset/preview?limit=10
 Content-Type: multipart/form-data; boundary=preview-boundary
 
 --preview-boundary
@@ -30,7 +30,7 @@ Jack,21
 
 ### 保存数据集（需要使用 mysql Profile 启动）
 
-POST http://localhost:8080/api/datasets
+POST http://localhost:8081/api/datasets
 Content-Type: multipart/form-data; boundary=dataset-boundary
 
 --dataset-boundary
@@ -45,8 +45,24 @@ Jack,21
 
 ### 查询已保存的数据集
 
-GET http://localhost:8080/api/datasets/1
+GET http://localhost:8081/api/datasets/1
 
 ### 预览已保存的数据集
 
-GET http://localhost:8080/api/datasets/1/preview?limit=10
+GET http://localhost:8081/api/datasets/1/preview?limit=10
+
+### 数据集列表
+
+GET http://localhost:8081/api/datasets
+
+### 数据质量分析
+
+GET http://localhost:8081/api/datasets/1/quality
+
+### 数据统计分析
+
+GET http://localhost:8081/api/datasets/1/profile
+
+### 删除数据集
+
+DELETE http://localhost:8081/api/datasets/1
