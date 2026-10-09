@@ -1,6 +1,10 @@
 HELP.md
 target/
 data/
+frontend/node_modules/
+frontend/dist/
+.pnpm-store/
+frontend/pnpm-lock.yaml
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
