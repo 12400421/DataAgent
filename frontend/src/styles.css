@@ -266,6 +266,12 @@ a {
   color: #137247;
 }
 
+.message-info {
+  border: 1px solid #cbd7ff;
+  background: #f1f4ff;
+  color: #344fa8;
+}
+
 .table-panel {
   overflow: hidden;
 }
@@ -547,6 +553,58 @@ tbody tr:hover {
   text-align: center;
 }
 
+.ai-analysis-panel {
+  margin-top: 38px;
+  padding: 24px;
+}
+
+.ai-analysis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.ai-analysis-header h2 {
+  margin: 4px 0 7px;
+}
+
+.ai-analysis-header .muted {
+  max-width: 680px;
+}
+
+.ai-analysis-panel > .message {
+  margin: 20px 0 0;
+}
+
+.ai-analysis-placeholder {
+  margin-top: 20px;
+  border: 1px dashed #ccd4e2;
+  border-radius: 12px;
+  background: #fafbfc;
+  color: #7a8498;
+  padding: 34px 20px;
+  text-align: center;
+}
+
+.ai-report {
+  margin-top: 20px;
+  border: 1px solid #e2e7f0;
+  border-radius: 12px;
+  background: #fafbfc;
+  padding: 22px;
+}
+
+.ai-report pre {
+  margin: 0;
+  color: #29364d;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 900px) {
   .metric-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -599,5 +657,14 @@ tbody tr:hover {
 
   .chart-panel {
     padding: 18px 14px 10px;
+  }
+
+  .ai-analysis-panel {
+    padding: 20px 16px;
+  }
+
+  .ai-analysis-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

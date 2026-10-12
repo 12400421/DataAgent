@@ -39,6 +39,13 @@ export async function getDatasetProfile(id) {
   return response.data
 }
 
+export async function requestDatasetAiAnalysis(id) {
+  const response = await api.post(`/datasets/${id}/ai-analysis`, undefined, {
+    timeout: 120_000,
+  })
+  return response.data
+}
+
 export async function deleteDataset(id) {
   await api.delete(`/datasets/${id}`)
 }

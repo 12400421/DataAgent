@@ -9,6 +9,7 @@ import {
   getDatasetPreview,
   getDatasetProfile,
   getDatasetQuality,
+  requestDatasetAiAnalysis,
 } from '../api/datasets'
 
 const props = defineProps({
@@ -26,6 +27,10 @@ const loading = ref(false)
 const analysisLoading = ref(false)
 const errorMessage = ref('')
 const analysisError = ref('')
+const aiLoading = ref(false)
+const aiReport = ref('')
+const aiNotice = ref('')
+const aiError = ref('')
 
 const previewColumns = computed(() => {
   if (preview.value?.columnNames?.length) {
@@ -73,6 +78,32 @@ async function loadAnalysis() {
     analysisError.value = analysisError.value ? `${analysisError.value}；${message}` : message
   }
   analysisLoading.value = false
+}
+
+async function runAiAnalysis() {
+  aiLoading.value = true
+  aiReport.value = ''
+  aiNotice.value = ''
+  aiError.value = ''
+
+  try {
+    const result = await requestDatasetAiAnalysis(props.id)
+    if (!result.configured) {
+      aiNotice.value = result.message || 'AI 模型尚未配置'
+      return
+    }
+
+    const report = typeof result.report === 'string' ? result.report.trim() : ''
+    if (!report) {
+      aiError.value = 'AI 分析未返回有效报告，请稍后重试'
+      return
+    }
+    aiReport.value = report
+  } catch (error) {
+    aiError.value = getApiErrorMessage(error, 'AI 分析失败，请稍后重试')
+  } finally {
+    aiLoading.value = false
+  }
 }
 
 function formatDate(value) {
@@ -271,5 +302,30 @@ onMounted(() => {
     </section>
 
     <DatasetVisualizations :quality="quality" :profile="profile" :loading="analysisLoading" />
+
+    <section class="panel ai-analysis-panel">
+      <div class="ai-analysis-header">
+        <div>
+          <p class="eyebrow">AI ANALYSIS</p>
+          <h2>AI 智能分析</h2>
+          <p class="muted">根据数据集基本信息、质量分析和统计分析生成综合报告。</p>
+        </div>
+        <button class="button button-primary" :disabled="aiLoading" @click="runAiAnalysis">
+          {{ aiLoading ? 'AI 分析中…' : '开始 AI 分析' }}
+        </button>
+      </div>
+
+      <p v-if="aiNotice" class="message message-info">{{ aiNotice }}</p>
+      <p v-if="aiError" class="message message-error">{{ aiError }}</p>
+      <div v-if="aiLoading" class="ai-analysis-placeholder">
+        正在整理现有分析结果并请求 AI 模型，请稍候…
+      </div>
+      <article v-else-if="aiReport" class="ai-report" aria-live="polite">
+        <pre>{{ aiReport }}</pre>
+      </article>
+      <div v-else-if="!aiNotice && !aiError" class="ai-analysis-placeholder">
+        点击“开始 AI 分析”生成数据概况、质量问题、统计结论和分析建议。
+      </div>
+    </section>
   </template>
 </template>
