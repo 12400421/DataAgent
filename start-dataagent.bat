@@ -9,9 +9,9 @@ set "FRONTEND_DIR=%PROJECT_ROOT%\frontend"
 set "BACKEND_PORT=8081"
 set "FRONTEND_PORT=5173"
 set "OLLAMA_PORT=11434"
-set "OLLAMA_HOST=127.0.0.1:11434"
 set "CHECK_ONLY=0"
 set "HAS_ERROR=0"
+set "AI_MODE=OLLAMA"
 
 if /I "%~1"=="--check" set "CHECK_ONLY=1"
 
@@ -48,20 +48,9 @@ if errorlevel 1 (
     set "HAS_ERROR=1"
 )
 
-where.exe curl.exe >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] curl was not found in PATH and is required to check Ollama.
-    set "HAS_ERROR=1"
-)
-
-call :find_ollama
-if not defined OLLAMA_EXE (
-    echo [ERROR] Ollama was not found in PATH or its standard install directory.
-    set "HAS_ERROR=1"
-) else (
-    for %%I in ("%OLLAMA_EXE%") do set "PATH=%%~dpI;%PATH%"
-    echo [OK] Ollama found: %OLLAMA_EXE%
-)
+call :detect_ai_mode
+call :validate_ai_configuration
+call :show_ai_configuration
 
 rem Credentials are inherited by the backend process and are never printed or saved.
 if not defined DATAAGENT_DB_USERNAME (
@@ -78,33 +67,8 @@ if "%HAS_ERROR%"=="1" goto :configuration_failed
 
 if "%CHECK_ONLY%"=="1" goto :check_only
 
-rem This launcher always connects the backend to its local Ollama instance.
-set "DATAAGENT_AI_BASE_URL=http://127.0.0.1:11434/v1"
-
-echo.
-echo [STEP] Checking Ollama...
-call :ollama_ready
-if errorlevel 1 (
-    call :port_is_listening %OLLAMA_PORT%
-    if errorlevel 1 (
-        echo [START] Ollama is not running. Opening a dedicated service window...
-        start "DataAgent Ollama" /D "%PROJECT_ROOT%" cmd.exe /d /k ollama.exe serve
-        call :wait_for_ollama 30
-        if errorlevel 1 (
-            echo [ERROR] Ollama did not become ready after 30 checks.
-            goto :launch_failed
-        )
-        echo [OK] Ollama is ready on port %OLLAMA_PORT%.
-    ) else (
-        echo [WARN] Port %OLLAMA_PORT% is occupied, but Ollama did not respond.
-        echo [ERROR] Close the program using port %OLLAMA_PORT% and run this script again.
-        goto :launch_failed
-    )
-) else (
-    echo [SKIP] Ollama is already running.
-)
-
-call :configure_local_ai
+call :prepare_ai_runtime
+if errorlevel 1 goto :launch_failed
 
 echo.
 echo [STEP] Checking Spring Boot backend port %BACKEND_PORT%...
@@ -154,6 +118,99 @@ echo        Closing this launcher will not stop the service windows.
 pause
 exit /b 0
 
+:detect_ai_mode
+set "AI_MODE=OLLAMA"
+if not defined DATAAGENT_AI_BASE_URL exit /b 0
+set "AI_MODE=OPENAI_COMPATIBLE"
+for /f "delims=" %%I in ('set DATAAGENT_AI_BASE_URL ^| %SystemRoot%\System32\findstr.exe /I /L /X /C:"DATAAGENT_AI_BASE_URL=http://localhost:11434/v1" /C:"DATAAGENT_AI_BASE_URL=http://localhost:11434/v1/" /C:"DATAAGENT_AI_BASE_URL=http://127.0.0.1:11434/v1" /C:"DATAAGENT_AI_BASE_URL=http://127.0.0.1:11434/v1/"') do set "AI_MODE=OLLAMA"
+exit /b 0
+
+:validate_ai_configuration
+if /I "%AI_MODE%"=="OPENAI_COMPATIBLE" goto :validate_openai_compatible_ai
+
+set "OLLAMA_HOST=127.0.0.1:11434"
+set "DATAAGENT_AI_BASE_URL=http://localhost:11434/v1"
+where.exe curl.exe >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] curl was not found in PATH and is required to check Ollama.
+    set "HAS_ERROR=1"
+)
+
+call :find_ollama
+if not defined OLLAMA_EXE (
+    echo [ERROR] Ollama was not found in PATH or its standard install directory.
+    set "HAS_ERROR=1"
+) else (
+    for %%I in ("%OLLAMA_EXE%") do set "PATH=%%~dpI;%PATH%"
+    echo [OK] Ollama found: %OLLAMA_EXE%
+)
+exit /b 0
+
+:validate_openai_compatible_ai
+if not defined DATAAGENT_AI_BASE_URL (
+    echo [ERROR] DATAAGENT_AI_BASE_URL is not configured for OpenAI-compatible mode.
+    set "HAS_ERROR=1"
+)
+if not defined DATAAGENT_AI_MODEL (
+    echo [ERROR] DATAAGENT_AI_MODEL is not configured for OpenAI-compatible mode.
+    set "HAS_ERROR=1"
+)
+if not defined DATAAGENT_AI_API_KEY (
+    echo [ERROR] DATAAGENT_AI_API_KEY is not configured for OpenAI-compatible mode.
+    set "HAS_ERROR=1"
+)
+exit /b 0
+
+:show_ai_configuration
+if /I "%AI_MODE%"=="OPENAI_COMPATIBLE" (
+    echo [INFO] AI mode: OpenAI-compatible API
+    if defined DATAAGENT_AI_MODEL call :print_ai_model
+) else (
+    echo [INFO] AI mode: local Ollama
+    if defined DATAAGENT_AI_MODEL call :print_ai_model
+    if not defined DATAAGENT_AI_MODEL echo [INFO] AI model: select the first installed Ollama model at startup.
+)
+exit /b 0
+
+:print_ai_model
+setlocal EnableDelayedExpansion
+echo [INFO] AI model: !DATAAGENT_AI_MODEL!
+endlocal
+exit /b 0
+
+:prepare_ai_runtime
+if /I "%AI_MODE%"=="OPENAI_COMPATIBLE" (
+    echo.
+    echo [STEP] Using the configured OpenAI-compatible API; Ollama checks are skipped.
+    exit /b 0
+)
+
+echo.
+echo [STEP] Checking Ollama...
+call :ollama_ready
+if errorlevel 1 (
+    call :port_is_listening %OLLAMA_PORT%
+    if errorlevel 1 (
+        echo [START] Ollama is not running. Opening a dedicated service window...
+        start "DataAgent Ollama" /D "%PROJECT_ROOT%" cmd.exe /d /k ollama.exe serve
+        call :wait_for_ollama 30
+        if errorlevel 1 (
+            echo [ERROR] Ollama did not become ready after 30 checks.
+            exit /b 1
+        )
+        echo [OK] Ollama is ready on port %OLLAMA_PORT%.
+    ) else (
+        echo [WARN] Port %OLLAMA_PORT% is occupied, but Ollama did not respond.
+        echo [ERROR] Close the program using port %OLLAMA_PORT% and run this script again.
+        exit /b 1
+    )
+) else (
+    echo [SKIP] Ollama is already running.
+)
+
+call :configure_local_ai
+exit /b 0
+
 :find_ollama
 set "OLLAMA_EXE="
 for /f "delims=" %%I in ('where.exe ollama.exe 2^>nul') do if not defined OLLAMA_EXE set "OLLAMA_EXE=%%I"
@@ -187,6 +244,7 @@ if not defined DATAAGENT_AI_MODEL (
 rem Ollama ignores this process-only bearer value. Never forward or store a real API key.
 set "DATAAGENT_AI_API_KEY=dataagent-local-%RANDOM%-%RANDOM%"
 echo [OK] A local Ollama model is configured for AI analysis.
+call :print_ai_model
 echo [OK] The AI endpoint is configured for the local Ollama service.
 exit /b 0
 
@@ -226,14 +284,18 @@ exit /b 0
 :check_only
 echo.
 echo [CHECK] Required files, commands, and database variables are available.
-call :report_port %OLLAMA_PORT%
+if /I "%AI_MODE%"=="OLLAMA" call :report_port %OLLAMA_PORT%
 call :report_port %BACKEND_PORT%
 call :report_port %FRONTEND_PORT%
-call :ollama_ready
-if errorlevel 1 (
-    echo [CHECK] Ollama is installed but is not currently responding.
+if /I "%AI_MODE%"=="OPENAI_COMPATIBLE" (
+    echo [CHECK] OpenAI-compatible variables are available; Ollama checks were skipped.
 ) else (
-    echo [CHECK] Ollama is responding.
+    call :ollama_ready
+    if errorlevel 1 (
+        echo [CHECK] Ollama is installed but is not currently responding.
+    ) else (
+        echo [CHECK] Ollama is responding.
+    )
 )
 echo [CHECK] No service was started because --check was used.
 exit /b 0

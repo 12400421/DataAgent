@@ -46,6 +46,13 @@ export async function requestDatasetAiAnalysis(id) {
   return response.data
 }
 
+export async function askDatasetQuestion(id, question) {
+  const response = await api.post(`/datasets/${id}/ai-question`, { question }, {
+    timeout: 120_000,
+  })
+  return response.data
+}
+
 export async function deleteDataset(id) {
   await api.delete(`/datasets/${id}`)
 }

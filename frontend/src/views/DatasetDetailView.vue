@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import DatasetAiQuestion from '../components/DatasetAiQuestion.vue'
 import DatasetVisualizations from '../components/DatasetVisualizations.vue'
 import {
   getApiErrorMessage,
@@ -327,5 +328,7 @@ onMounted(() => {
         点击“开始 AI 分析”生成数据概况、质量问题、统计结论和分析建议。
       </div>
     </section>
+
+    <DatasetAiQuestion :key="dataset.id" :dataset-id="dataset.id" />
   </template>
 </template>
